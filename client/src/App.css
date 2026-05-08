@@ -1,0 +1,172 @@
+@import "tailwindcss";
+/* Base layout */
+.app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #0f0f13;
+}
+
+/* Sidebar - fixed width on desktop */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+/* Chat container takes remaining space */
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0; /* prevents flex overflow */
+}
+
+/* Voice toggle button - positioned inside chat container */
+.chat-header-actions {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  z-index: 15;
+}
+
+.voice-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(26, 26, 31, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 40px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.voice-toggle:hover {
+  background: rgba(38, 38, 46, 0.9);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+button:has(> :contains('🔊'), > :contains('🔇')) {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  background: #1e1e24;
+  padding: 10px 16px;
+  border-radius: 40px;
+  color: white;
+  font-weight: bold;
+}
+/* Base layout */
+.app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #0f0f13;
+}
+
+/* Chat container takes remaining space */
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+}
+
+/* Desktop: sidebar always visible */
+@media (min-width: 768px) {
+  .app {
+    flex-direction: row;
+  }
+  .chat-container {
+    margin-left: 0;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .chat-container {
+    height: 100vh;
+  }
+}
+
+/* ========== RESPONSIVE BREAKPOINTS ========== */
+
+/* Tablet (768px - 1023px) */
+@media (max-width: 1023px) {
+  .sidebar {
+    width: 260px;
+  }
+  
+  .chat-header-actions {
+    top: 12px;
+    right: 16px;
+  }
+  
+  .voice-toggle {
+    padding: 5px 12px;
+    font-size: 0.75rem;
+  }
+  
+  .voice-toggle span {
+    display: inline; /* keep text on tablet */
+  }
+}
+
+/* Mobile (below 768px) */
+@media (max-width: 767px) {
+  .app {
+    flex-direction: column;
+  }
+  
+  /* Sidebar becomes horizontal top bar */
+  .sidebar {
+    width: 100%;
+    height: auto;
+    min-height: 60px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Chat container fills remaining height */
+  .chat-container {
+    height: calc(100vh - 60px); /* subtract sidebar height */
+  }
+  
+  /* Voice toggle moves inside chat container, adjust position */
+  .chat-header-actions {
+    top: 12px;
+    right: 12px;
+  }
+  
+  .voice-toggle {
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    gap: 4px;
+  }
+  
+  /* Optional: hide text on very small screens, keep icon only */
+  @media (max-width: 480px) {
+    .voice-toggle span {
+      display: none;
+    }
+    .voice-toggle {
+      padding: 6px;
+      border-radius: 32px;
+    }
+  }
+}
+
+/* Extra small devices (below 480px) */
+@media (max-width: 480px) {
+  .chat-header-actions {
+    top: 8px;
+    right: 8px;
+  }
+}
