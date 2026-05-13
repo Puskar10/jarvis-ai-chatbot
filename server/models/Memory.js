@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const memorySchema = new mongoose.Schema(
   {
@@ -9,4 +9,6 @@ const memorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Memory", memorySchema);
+const Memory = mongoose.model("Memory", memorySchema);
+
+export default Memory;
