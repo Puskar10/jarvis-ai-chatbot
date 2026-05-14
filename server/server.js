@@ -6,6 +6,7 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import conversationRoutes from "./routes/conversationRoutes.js";
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use(express.json());
 /* -------- ROUTES -------- */
 app.use("/auth",authRoutes);
 app.use("/chat", chatRoutes);
+app.use("/conversations", conversationRoutes);
 
 
 

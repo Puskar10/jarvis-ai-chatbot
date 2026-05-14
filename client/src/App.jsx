@@ -2,27 +2,24 @@ import { useState, useEffect } from "react";
 import Sidebar from "./component/Sidebar";
 import ChatWindow from "./component/ChatWindow";
 import InputBar from "./component/InputBar";
-import { sendToAI } from "./services/api";
+import Auth from "./component/Auth";
+
+import {
+  sendToAI,
+  getConversations,
+  getConversationMessages,
+  deleteConversationFromDB,
+} from "./services/api";
+
 import { speak } from "./utils/speak";
 import { Menu } from "lucide-react";
 import "./App.css";
-import Auth from "./component/Auth";
 
 export default function App() {
   /* =========================
-     USER ID (Persistent)
+     AUTH STATE
   ========================= */
 
-  const [userId] = useState(() => {
-    let storedId = localStorage.getItem("userId");
-
-    if (!storedId) {
-      storedId = crypto.randomUUID();
-      localStorage.setItem("userId", storedId);
-    }
-
-    return storedId;
-  });
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!localStorage.getItem("token");
   });
@@ -42,15 +39,10 @@ export default function App() {
   ]);
 
   const [input, setInput] = useState("");
-
   const [isTyping, setIsTyping] = useState(false);
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
   const [conversations, setConversations] = useState([]);
-
   const [activeConversationId, setActiveConversationId] = useState(null);
-
   const [isMobile, setIsMobile] = useState(false);
 
   /* =========================
@@ -58,34 +50,45 @@ export default function App() {
   ========================= */
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
 
     checkMobile();
 
     window.addEventListener("resize", checkMobile);
 
-    return () => window.removeEventListener("resize", checkMobile);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
   }, []);
 
   /* =========================
-     LOAD SAVED CONVERSATIONS
+     LOAD CONVERSATIONS FROM DB
   ========================= */
 
-  useEffect(() => {
-    const saved = localStorage.getItem("conversations");
+  const loadConversations = async () => {
+    try {
+      const data = await getConversations();
 
-    if (saved) {
-      setConversations(JSON.parse(saved));
+      const formatted = data.map((conv) => ({
+        id: conv._id,
+        title: conv.title,
+        createdAt: conv.createdAt,
+        updatedAt: conv.updatedAt,
+      }));
+
+      setConversations(formatted);
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
     }
-  }, []);
-
-  /* =========================
-     SAVE CONVERSATIONS
-  ========================= */
+  };
 
   useEffect(() => {
-    localStorage.setItem("conversations", JSON.stringify(conversations));
-  }, [conversations]);
+    if (isAuthenticated) {
+      loadConversations();
+    }
+  }, [isAuthenticated]);
 
   /* =========================
      SEND MESSAGE
@@ -96,8 +99,6 @@ export default function App() {
 
     if (!text.trim() || isTyping) return;
 
-    /* ----- USER MESSAGE ----- */
-
     const userMessage = {
       role: "user",
       text,
@@ -105,37 +106,17 @@ export default function App() {
     };
 
     setChat((prev) => [...prev, userMessage]);
-
     setInput("");
-
     setIsTyping(true);
 
-    /* ----- CREATE NEW CHAT TITLE ----- */
-
-    if (!activeConversationId) {
-      const newId = Date.now().toString();
-
-      const title = text.slice(0, 30) + (text.length > 30 ? "..." : "");
-
-      setConversations((prev) => [
-        {
-          id: newId,
-          title,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        ...prev,
-      ]);
-
-      setActiveConversationId(newId);
-    }
-
     try {
-      /* ----- SEND TO AI ----- */
+      const data = await sendToAI(text, activeConversationId);
 
-      const reply = await sendToAI(text);
+      const reply = data.reply;
 
-      /* ----- AI MESSAGE ----- */
+      if (!activeConversationId) {
+        setActiveConversationId(data.conversationId);
+      }
 
       const assistantMessage = {
         role: "assistant",
@@ -145,26 +126,11 @@ export default function App() {
 
       setChat((prev) => [...prev, assistantMessage]);
 
-      /* ----- SPEAK RESPONSE ----- */
-
       if (voiceOn && reply) {
         speak(reply);
       }
 
-      /* ----- UPDATE CONVERSATION ----- */
-
-      if (activeConversationId) {
-        setConversations((prev) =>
-          prev.map((conv) =>
-            conv.id === activeConversationId
-              ? {
-                  ...conv,
-                  updatedAt: new Date(),
-                }
-              : conv,
-          ),
-        );
-      }
+      await loadConversations();
     } catch (error) {
       console.error("API ERROR:", error);
 
@@ -186,19 +152,7 @@ export default function App() {
   ========================= */
 
   const handleNewChat = () => {
-    const newId = Date.now().toString();
-
-    setConversations((prev) => [
-      {
-        id: newId,
-        title: "New Conversation",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      ...prev,
-    ]);
-
-    setActiveConversationId(newId);
+    setActiveConversationId(null);
 
     setChat([
       {
@@ -214,50 +168,91 @@ export default function App() {
   };
 
   /* =========================
-     SELECT CHAT
+     SELECT CONVERSATION
   ========================= */
 
-  const handleSelectConversation = (id) => {
-    setActiveConversationId(id);
+  const handleSelectConversation = async (id) => {
+    try {
+      setActiveConversationId(id);
 
-    if (isMobile) {
-      setIsSidebarOpen(false);
+      const messages = await getConversationMessages(id);
+
+      const formattedMessages = messages.map((msg) => ({
+        role: msg.role,
+        text: msg.message,
+        timestamp: new Date(msg.createdAt),
+      }));
+
+      setChat(formattedMessages);
+
+      if (isMobile) {
+        setIsSidebarOpen(false);
+      }
+    } catch (error) {
+      console.error("Failed to load messages:", error);
     }
   };
 
   /* =========================
-     DELETE CHAT
+     DELETE CONVERSATION
   ========================= */
 
-  const handleDeleteConversation = (id) => {
-    setConversations((prev) => prev.filter((conv) => conv.id !== id));
+  const handleDeleteConversation = async (id) => {
+    try {
+      await deleteConversationFromDB(id);
 
-    if (activeConversationId === id) {
-      setActiveConversationId(null);
+      setConversations((prev) => prev.filter((conv) => conv.id !== id));
 
-      setChat([
-        {
-          role: "assistant",
-          text: "Hello! I'm Jarvis 🤖",
-          timestamp: new Date(),
-        },
-      ]);
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+
+        setChat([
+          {
+            role: "assistant",
+            text: "Hello! I'm Jarvis 🤖",
+            timestamp: new Date(),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
     }
   };
-  // Logout function
-  const handleLogout = () =>{
+
+  /* =========================
+     LOGOUT
+  ========================= */
+
+  const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("conversations");
+    localStorage.removeItem("userId");
+
     setIsAuthenticated(false);
-  }
+    setActiveConversationId(null);
+    setConversations([]);
 
+    setChat([
+      {
+        role: "assistant",
+        text: "Hello! I'm Jarvis 🤖",
+        timestamp: new Date(),
+      },
+    ]);
+  };
 
-
+  /* =========================
+     AUTH PAGE
+  ========================= */
 
   if (!isAuthenticated) {
     return (
-      <Auth onAuthSuccess={() => setIsAuthenticated(true)} />
+      <Auth
+        onAuthSuccess={() => {
+          setIsAuthenticated(true);
+        }}
+      />
     );
   }
 
@@ -267,8 +262,6 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* ================= Sidebar ================= */}
-
       <Sidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -278,28 +271,20 @@ export default function App() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onLogout={handleLogout}
-
       />
 
-      {/* ================= Main Chat ================= */}
-
       <div className="chat-container">
-        {/* ===== Mobile Menu Button ===== */}
-
         {isMobile && (
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="fixed top-4 left-4 z-30 bg-[#1a1a1f] p-2 rounded-xl border border-gray-800 shadow-lg text-gray-300 hover:text-white md:hidden"
+            aria-label="Open sidebar"
           >
             <Menu size={20} />
           </button>
         )}
 
-        {/* ===== Chat Window ===== */}
-
         <ChatWindow chat={chat} isTyping={isTyping} />
-
-        {/* ===== Input ===== */}
 
         <InputBar
           input={input}

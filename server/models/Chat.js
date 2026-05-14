@@ -2,9 +2,28 @@ import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema(
   {
-    userId: String,
-    role: String,
-    message: String,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Conversation",
+      required: true,
+    },
+
+    role: {
+      type: String,
+      enum: ["user", "assistant"],
+      required: true,
+    },
+
+    message: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true }
 );
