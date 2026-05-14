@@ -74,7 +74,7 @@ export default function ChatWindow({ chat, onSendMessage, isTyping = false }) {
             <Sparkles size={20} className="text-white" />
           </div>
           <div>
-            <h2 className="text-white text-base font-semibold tracking-tight">Nova AI</h2>
+            <h2 className="text-white text-base font-semibold tracking-tight">Jarvis AI</h2>
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute h-full w-full rounded-full bg-green-400 opacity-75"></span>
