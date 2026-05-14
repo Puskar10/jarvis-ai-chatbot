@@ -11,23 +11,35 @@ import conversationRoutes from "./routes/conversationRoutes.js";
 const app = express();
 
 /* -------- DATABASE -------- */
-
 connectDB();
 
-/* -------- MIDDLEWARE -------- */
+/* -------- CORS -------- */
 
-const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "https://jarvis-ai-chatbot-delta.vercel.app"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  "https://jarvis-ai-chatbot-delta.vercel.app",
+];
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow Postman / server-to-server requests
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
+
+// ✅ Express 5 fix: don't use app.options("*", ...)
+app.options("/{*splat}", cors());
 
 app.use(express.json());
 
@@ -39,6 +51,16 @@ app.use("/conversations", conversationRoutes);
 
 app.get("/", (req, res) => {
   res.send("Jarvis API is running");
+});
+
+/* -------- 404 HANDLER -------- */
+
+// ✅ Express 5 wildcard route
+app.all("/{*splat}", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
 /* -------- SERVER -------- */
