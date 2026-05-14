@@ -19,16 +19,20 @@ connectDB();
 
 /* -------- MIDDLEWARE -------- */
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://jarvis-ai-chatbot-delta.vercel.app/"],
+    methods: ["GET", "POST"],
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 
 /* -------- ROUTES -------- */
-app.use("/auth",authRoutes);
+app.use("/auth", authRoutes);
 app.use("/chat", chatRoutes);
 app.use("/conversations", conversationRoutes);
-
-
 
 app.get("/", (req, res) => {
   res.send("Jarvis API is running");
